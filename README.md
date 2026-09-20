@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# JobPrep
 
-## Getting Started
+Portal lowongan kerja dengan latihan interview AI spesifik untuk setiap lowongan.
 
-First, run the development server:
+## Stack
+- Next.js App Router + TypeScript strict
+- Tailwind CSS v4
+- Supabase Auth, Postgres, Storage, dan RLS
+- Gemini API melalui Route Handler server-side
+- Zod dan React Hook Form siap untuk validasi form
+
+## Menjalankan lokal
 
 ```bash
+cp .env.example .env.local
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supabase
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Buat project di Supabase.
+2. Isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+3. Jalankan isi `supabase/migrations/0001_initial.sql` melalui Supabase SQL Editor atau Supabase CLI:
 
-## Learn More
+```bash
+supabase db push
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. Pastikan email auth dikonfigurasi untuk login/registrasi.
+5. CV harus diunggah ke bucket private `cvs`; policy storage sudah disertakan di migration.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Gemini
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Isi `GEMINI_API_KEY` dan opsional `GEMINI_MODEL`. API key hanya dipakai di server Route Handler, tidak dikirim ke client.
 
-## Deploy on Vercel
+## Email
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`RESEND_API_KEY`, `RESEND_FROM_EMAIL`, dan `NEXT_PUBLIC_APP_URL` disediakan untuk integrasi notifikasi status lamaran. Implementasi email production dapat ditambahkan pada Supabase Edge Function setelah kredensial Resend tersedia.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Verifikasi
+
+```bash
+npm run lint
+npm run build
+```
+
+## MVP implementation status
+
+Implemented and verified locally:
+- Responsive UI for landing, job listing/detail, interview, user/admin/recruiter dashboards, auth, and application form.
+- Zod boundaries for jobs, interview answers, and application metadata.
+- Server-only Gemini generate/evaluate route handlers with structured JSON fallback and rate-limit handling.
+- Application multipart route with PDF/5MB validation, authenticated Supabase upload, insert, and cleanup on database failure.
+- Interview session/question/answer routes with private-user ownership checks and persistent feedback.
+- Public job search route and recruiter-owned job/applicant routes with Zod validation and status updates.
+- Supabase migrations for core tables, RLS, private CV bucket, auth profile provisioning, and integrity hardening.
+
+Requires configured external services for end-to-end verification:
+- Supabase URL/anon key and applied migrations for Auth, Storage, and database persistence.
+- Gemini API key to verify live AI generation/evaluation.
+- Resend credentials and an email Edge Function for production status notifications.
+
+The app intentionally reports configuration errors instead of treating fallback/demo data as production integration.
