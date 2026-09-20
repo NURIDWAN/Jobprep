@@ -1,0 +1,7 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { Badge, Card } from "@/components/ui";
+type Job={id:string;title:string;location:string;work_type:string;level:string;matchScore:number;companies?:{name:string}};
+export default function RecommendationsPage(){const [jobs,setJobs]=useState<Job[]>([]);const [loading,setLoading]=useState(true);useEffect(()=>{fetch("/api/recommendations").then(r=>r.json()).then((d: {jobs?:Job[]})=>setJobs(d.jobs??[])).finally(()=>setLoading(false))},[]);return <main className="pro-page"><span className="pro-eyebrow"><Sparkles size={14}/> UNTUK KAMU</span><h1>Lowongan yang paling relevan.</h1><p className="page-lead">Rekomendasi berdasarkan profil, minat, dan latihan interview kamu.</p>{loading?<div className="skeleton-grid"><div className="skeleton-card"/><div className="skeleton-card"/></div>:jobs.length?<div className="job-grid">{jobs.map(job=><Card key={job.id}><Badge tone="blue">{job.matchScore}% match</Badge><h3>{job.title}</h3><p>{job.companies?.name??"Perusahaan"}</p><small>{job.location} · {job.work_type} · {job.level}</small><Link className="text-link" href={`/jobs/${job.id}`}>Lihat detail <ArrowRight size={14}/></Link></Card>)}</div>:<Card><h3>Belum ada rekomendasi</h3><p>Lengkapi profil dan mulai latihan interview untuk mendapatkan rekomendasi.</p></Card>}</main>}
