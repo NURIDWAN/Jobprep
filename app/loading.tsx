@@ -1,0 +1,1 @@
+export default function Loading() { return <main className="pro-page"><div className="skeleton-heading" /><div className="skeleton-grid">{[1,2,3].map((item)=><div className="skeleton-card" key={item}><div className="skeleton-line wide"/><div className="skeleton-line"/><div className="skeleton-line short"/></div>)}</div></main>; }
