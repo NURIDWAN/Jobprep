@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [email, setEmail] = useState("");
@@ -26,9 +27,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         : raw.includes("already registered") || raw.includes("already been registered")
           ? "Email ini sudah terdaftar. Silakan masuk atau gunakan email lain."
           : result.error.message;
-      setMessage(friendly); return;
+      setMessage(friendly); toast.error(friendly); return;
     }
-    setMessage(mode === "login" ? "Berhasil masuk. Muat ulang dashboard untuk melanjutkan." : "Akun dibuat. Cek email untuk konfirmasi sebelum masuk.");
+    setMessage(mode === "login" ? "Berhasil masuk. Muat ulang dashboard untuk melanjutkan." : "Akun dibuat. Cek email untuk konfirmasi sebelum masuk."); toast.success(mode === "login" ? "Berhasil masuk" : "Akun berhasil dibuat");
   }
 
   return <form onSubmit={submit}>
