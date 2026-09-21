@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(request: Request) {
   let body: unknown; try { body = await request.json(); } catch { return NextResponse.json({ error: "Body JSON tidak valid" }, { status: 400 }); }
   const parsed = interviewRequestSchema.safeParse(body); if (!parsed.success) return NextResponse.json({ error: "jobId tidak valid" }, { status: 400 });
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return NextResponse.json({ sessionId: null, questions: parseGeneratedQuestions("invalid"), source: "fallback" });
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return NextResponse.json({ error: "Supabase belum dikonfigurasi" }, { status: 503 });
   const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser(); if (!user) return NextResponse.json({ error: "Silakan masuk sebelum memulai sesi" }, { status: 401 });
   const session = await supabase.from("interview_sessions").insert({ job_id: parsed.data.jobId, user_id: user.id }).select("id, status, created_at").single(); if (session.error) return NextResponse.json({ error: "Sesi interview gagal dibuat" }, { status: 502 });
   const job = await supabase.from("jobs").select("title,description,qualifications,level,industry").eq("id", parsed.data.jobId).single();

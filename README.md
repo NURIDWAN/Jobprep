@@ -23,11 +23,15 @@ Buka `http://localhost:3000`.
 
 1. Buat project di Supabase.
 2. Isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-3. Jalankan isi `supabase/migrations/0001_initial.sql` melalui Supabase SQL Editor atau Supabase CLI:
+3. Jalankan semua migration `0001` sampai `0008` melalui Supabase SQL Editor atau Supabase CLI:
 
 ```bash
-supabase db push
+# Dari direktori project, setelah Supabase CLI terpasang dan login
+export SUPABASE_PROJECT_REF="project-ref-kamu"
+npm run db:push
 ```
+
+Script akan menjalankan `supabase link` lalu `supabase db push`. Migration tidak dijalankan otomatis oleh Vercel build; jalankan sekali saat deployment database atau melalui CI/CD yang memiliki Supabase CLI.
 
 4. Pastikan email auth dikonfigurasi untuk login/registrasi.
 5. CV harus diunggah ke bucket private `cvs`; policy storage sudah disertakan di migration.
@@ -47,7 +51,20 @@ npm run lint
 npm run build
 ```
 
-## MVP implementation status
+## Production operations
+
+Deploy the notification worker after setting Supabase secrets:
+
+```bash
+supabase secrets set RESEND_API_KEY=... RESEND_FROM_EMAIL=... SUPABASE_FUNCTION_SECRET=...
+supabase functions deploy send-application-notification
+```
+
+Configure a Database Webhook from `email_outbox` inserts to the Edge Function. The outbox uses `dedupe_key`, retry metadata, and a 90-day sent/failed retention policy. Schedule `select public.purge_expired_jobprep_data();` daily with Supabase scheduled jobs.
+
+Calendar export is provider-neutral through `GET /api/calendar/invites/:id` and returns an `.ics` file. Google/Outlook OAuth still requires provider credentials and is intentionally not claimed as live integration.
+
+
 
 Implemented and verified locally:
 - Responsive UI for landing, job listing/detail, interview, user/admin/recruiter dashboards, auth, and application form.

@@ -19,7 +19,15 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       ? await supabase.auth.signInWithPassword({ email, password })
       : await supabase.auth.signUp({ email, password, options: { data: { name, role } } });
     setLoading(false);
-    if (result.error) { setMessage(result.error.message); return; }
+    if (result.error) {
+      const raw = result.error.message.toLowerCase();
+      const friendly = raw.includes("rate limit") || raw.includes("too many")
+        ? "Terlalu banyak email konfirmasi dikirim. Tunggu sekitar 1 jam atau hubungkan SMTP Resend di Supabase, lalu coba lagi."
+        : raw.includes("already registered") || raw.includes("already been registered")
+          ? "Email ini sudah terdaftar. Silakan masuk atau gunakan email lain."
+          : result.error.message;
+      setMessage(friendly); return;
+    }
     setMessage(mode === "login" ? "Berhasil masuk. Muat ulang dashboard untuk melanjutkan." : "Akun dibuat. Cek email untuk konfirmasi sebelum masuk.");
   }
 

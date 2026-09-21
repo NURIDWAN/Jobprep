@@ -22,6 +22,6 @@ export async function POST(request: Request) {
   const upload = await supabase.storage.from("cvs").upload(path, cv, { contentType: "application/pdf", upsert: false });
   if (upload.error) return NextResponse.json({ error: "Upload CV gagal" }, { status: 502 });
   const inserted = await supabase.from("applications").insert({ job_id: metadata.data.jobId, user_id: user.id, cv_url: path, cover_letter: metadata.data.coverLetter || null }).select("id, status, created_at").single();
-  if (inserted.error) { await supabase.storage.from("cvs").remove([path]); return NextResponse.json({ error: "Lamaran gagal disimpan" }, { status: 502 }); }
+  if (inserted.error) { await supabase.storage.from("cvs").remove([path]); const duplicate = inserted.error.code === "23505" || inserted.error.message.toLowerCase().includes("duplicate"); return NextResponse.json({ error: duplicate ? "Kamu sudah melamar lowongan ini" : "Lamaran gagal disimpan" }, { status: duplicate ? 409 : 502 }); }
   return NextResponse.json({ application: inserted.data }, { status: 201 });
 }

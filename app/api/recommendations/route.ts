@@ -1,28 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { recommendationQuerySchema } from "@/lib/schemas";
-
-export async function GET(request: Request) {
-  const raw = Object.fromEntries(new URL(request.url).searchParams);
-  const parsed = recommendationQuerySchema.safeParse(raw);
-  if (!parsed.success) return NextResponse.json({ error: "Filter rekomendasi tidak valid" }, { status: 400 });
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return NextResponse.json({ jobs: [], source: "fallback" });
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Silakan masuk" }, { status: 401 });
-  const profile = await supabase.from("profiles").select("bio").eq("id", user.id).single();
-  let query = supabase.from("jobs").select("*,companies(id,name,logo_url)").eq("status", "published").limit(parsed.data.limit);
-  if (parsed.data.level) query = query.eq("level", parsed.data.level);
-  if (parsed.data.workType) query = query.eq("work_type", parsed.data.workType);
-  if (parsed.data.query) query = query.or(`title.ilike.%${parsed.data.query}%,description.ilike.%${parsed.data.query}%,industry.ilike.%${parsed.data.query}%`);
-  const result = await query;
-  if (result.error) return NextResponse.json({ error: "Rekomendasi gagal dimuat" }, { status: 502 });
-  const bio = (profile.data?.bio ?? "").toLowerCase();
-  const jobs = (result.data ?? []).map((job) => {
-    const text = `${job.title} ${job.description} ${job.industry}`.toLowerCase();
-    const terms: string[] = bio.split(/\W+/).filter(Boolean);
-    const matched = terms.filter((term) => term.length > 3 && text.includes(term)).length;
-    return { ...job, matchScore: Math.min(99, 60 + matched * 8) };
-  }).sort((a, b) => b.matchScore - a.matchScore);
-  return NextResponse.json({ jobs, source: "supabase" });
-}
+const normalize=(value:string)=>value.toLowerCase().replace(/[^a-z0-9\s-]/g," ");
+const overlap=(needles:string[],text:string)=>{const haystack=normalize(text);return needles.filter((item)=>haystack.includes(normalize(item))).length/Math.max(1,needles.length)};
+export async function GET(request:Request){const raw=Object.fromEntries(new URL(request.url).searchParams);const parsed=recommendationQuerySchema.safeParse(raw);if(!parsed.success)return NextResponse.json({error:"Filter rekomendasi tidak valid"},{status:400});if(!process.env.NEXT_PUBLIC_SUPABASE_URL||!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)return NextResponse.json({error:"Supabase belum dikonfigurasi"},{status:503});const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();if(!user)return NextResponse.json({error:"Silakan masuk"},{status:401});const preferences=await supabase.from("candidate_preferences").select("*").eq("user_id",user.id).maybeSingle();const interactions=await supabase.from("recommendation_interactions").select("job_id,interaction").eq("user_id",user.id);let query=supabase.from("jobs").select("*,companies(id,name,logo_url)").eq("status","published").limit(50);if(parsed.data.level)query=query.eq("level",parsed.data.level);if(parsed.data.workType)query=query.eq("work_type",parsed.data.workType);if(parsed.data.query)query=query.or(`title.ilike.%${parsed.data.query}%,description.ilike.%${parsed.data.query}%,industry.ilike.%${parsed.data.query}%`);const result=await query;if(result.error)return NextResponse.json({error:"Rekomendasi gagal dimuat"},{status:502});const pref=preferences.data;const skills=pref?.skills??[];const industries=pref?.industries??[];const locations=pref?.preferred_locations??[];const levels=pref?.preferred_levels??[];const workTypes=pref?.preferred_work_types??[];const jobs=(result.data??[]).map((job)=>{const text=`${job.title} ${job.description} ${job.qualifications}`;const skillScore=overlap(skills,text);const industryScore=overlap(industries,job.industry);const levelScore=levels.length?Number(levels.includes(job.level)):0.5;const locationScore=overlap(locations,job.location);const workScore=workTypes.length?Number(workTypes.includes(job.work_type)):0.5;const interaction=interactions.data?.find((item)=>item.job_id===job.id);const penalty=interaction?.interaction==="dismiss"?0.25:interaction?.interaction==="apply"?0.1:0;const matchScore=Math.round(Math.max(0,Math.min(99,(skillScore*.4+industryScore*.2+levelScore*.15+locationScore*.15+workScore*.1-penalty)*100)));return {...job,matchScore,matchBreakdown:{skills:Math.round(skillScore*100),industry:Math.round(industryScore*100),level:Math.round(levelScore*100),location:Math.round(locationScore*100),workType:Math.round(workScore*100)}}}).sort((a,b)=>b.matchScore-a.matchScore).slice(0,parsed.data.limit);return NextResponse.json({jobs,scoring:{skills:.4,industry:.2,level:.15,location:.15,workType:.1},source:"supabase"});}
